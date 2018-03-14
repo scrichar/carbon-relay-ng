@@ -49,7 +49,7 @@ concurrency    |     N     |  int        | 10      | number of concurrent connec
 bufSize        |     N     |  int        | 10M     | buffer size. assume +- 100B per message, so 10M is about 1GB of RAM
 flushMaxNum    |     N     |  int        | 10k     | max number of metrics to buffer before triggering flush
 flushMaxWait   |     N     |  int (ms)   | 500     | max time to buffer before triggering flush
-timeout        |     N     |  int (ms)   | 5000    | abort and retry requests to api gateway if takes longer than this.
+timeout        |     N     |  int (ms)   | 10000   | abort and retry requests to api gateway if takes longer than this.
 orgId          |     N     |  int        | 1       |
 
 ## kafkaMdm route
@@ -72,3 +72,18 @@ flushMaxWait   |     N     |  int (ms)   | 500     | max time to buffer before t
 timeout        |     N     |  int (ms)   | 2000    |
 orgId          |     N     |  int        | 1       |
 
+## Google PubSub route
+
+setting        | mandatory | values      | default       | description 
+---------------|-----------|-------------|---------------|------------
+key            |     Y     |  string     | N/A           |
+project        |     Y     |  string     | N/A           | Google Cloud Project containing the topic
+topic          |     Y     |  string     | N/A           | The Google PubSub topic to publish metrics onto
+codec          |     N     |  string     | gzip          | Optional compression codec to compress published messages. Valid: "none" (no compression), "gzip" (default)
+prefix         |     N     |  string     | ""            |
+sub            |     N     |  string     | ""            |
+regex          |     N     |  string     | ""            |
+blocking       |     N     |  true/false | false         | if false, full buffer drops data. if true, full buffer puts backpressure on the table, possibly affecting ingestion and other routes
+bufSize        |     N     |  int        | 10M           | buffer size. assume +- 100B per message, so 10M is about 1GB of RAM
+flushMaxSize   |     N     |  int        | (10MB - 4KB)  | max message size before triggering flush. The size is before any compression is calculated. PubSub message limit is 10MB but this can be higher if using compression.
+flushMaxWait   |     N     |  int (ms)   | 1000          | max time to buffer before triggering flush

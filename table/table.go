@@ -8,13 +8,13 @@ import (
 	"sync/atomic"
 
 	"github.com/Dieterbe/go-metrics"
-	"github.com/scrichar/carbon-relay-ng/aggregator"
-	"github.com/scrichar/carbon-relay-ng/cfg"
-	"github.com/scrichar/carbon-relay-ng/imperatives"
-	"github.com/scrichar/carbon-relay-ng/matcher"
-	"github.com/scrichar/carbon-relay-ng/rewriter"
-	"github.com/scrichar/carbon-relay-ng/route"
-	"github.com/scrichar/carbon-relay-ng/stats"
+	"github.com/graphite-ng/carbon-relay-ng/aggregator"
+	"github.com/graphite-ng/carbon-relay-ng/cfg"
+	"github.com/graphite-ng/carbon-relay-ng/imperatives"
+	"github.com/graphite-ng/carbon-relay-ng/matcher"
+	"github.com/graphite-ng/carbon-relay-ng/rewriter"
+	"github.com/graphite-ng/carbon-relay-ng/route"
+	"github.com/graphite-ng/carbon-relay-ng/stats"
 )
 
 type TableConfig struct {
@@ -110,7 +110,7 @@ func (table *Table) Dispatch(buf []byte, val float64, ts uint32) {
 	for _, route := range conf.routes {
 		if route.Match(fields[0]) {
 			routed = true
-			log.Info("table sending to route: %s", final)
+			log.Debug("table sending to route: %s", final)
 			route.Dispatch(final)
 		}
 	}
@@ -630,7 +630,7 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 			var bufSize = int(1e7)  // since a message is typically around 100B this is 1GB
 			var flushMaxNum = 10000 // number of metrics
 			var flushMaxWait = 500  // in ms
-			var timeout = 5000      // in ms
+			var timeout = 10000     // in ms
 			var concurrency = 10    // number of concurrent connections to tsdb-gw
 			var orgId = 1
 
@@ -689,6 +689,35 @@ func (table *Table) InitRoutes(config cfg.Config) error {
 			}
 
 			route, err := route.NewKafkaMdm(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Topic, routeConfig.Codec, routeConfig.SchemasFile, routeConfig.PartitionBy, routeConfig.Brokers, bufSize, routeConfig.OrgId, flushMaxNum, flushMaxWait, timeout, routeConfig.Blocking)
+			if err != nil {
+				log.Error(err.Error())
+				return fmt.Errorf("error adding route '%s'", routeConfig.Key)
+			}
+			table.AddRoute(route)
+		case "pubsub":
+			var codec = "gzip"
+			var format = "plain"                    // aka graphite 'linemode'
+			var bufSize = int(1e7)                  // since a message is typically around 100B this is 1GB
+			var flushMaxSize = int(1e7) - int(4096) // 5e6 = 5MB. max size of message. Note google limits to 10M, but we want to limit to less to account for overhead
+			var flushMaxWait = 1000                 // in ms
+
+			if routeConfig.Codec != "" {
+				codec = routeConfig.Codec
+			}
+			if routeConfig.Format != "" {
+				format = routeConfig.Format
+			}
+			if routeConfig.BufSize != 0 {
+				bufSize = routeConfig.BufSize
+			}
+			if routeConfig.FlushMaxSize != 0 {
+				flushMaxSize = routeConfig.FlushMaxSize
+			}
+			if routeConfig.FlushMaxWait != 0 {
+				flushMaxWait = routeConfig.FlushMaxWait
+			}
+
+			route, err := route.NewPubSub(routeConfig.Key, routeConfig.Prefix, routeConfig.Substr, routeConfig.Regex, routeConfig.Project, routeConfig.Topic, format, codec, bufSize, flushMaxSize, flushMaxWait, routeConfig.Blocking)
 			if err != nil {
 				log.Error(err.Error())
 				return fmt.Errorf("error adding route '%s'", routeConfig.Key)

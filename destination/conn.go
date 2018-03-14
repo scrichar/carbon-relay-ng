@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
-	"github.com/scrichar/carbon-relay-ng/stats"
+	"github.com/graphite-ng/carbon-relay-ng/stats"
 )
 
 var keepsafe_initial_cap = 100000 // not very important
@@ -243,13 +243,13 @@ func (c *Conn) HandleData() {
 // deals with pickle errors internally because retrying wouldn't help anyway
 func (c *Conn) Write(buf []byte) (int, error) {
 	if c.pickle {
-		dp, err := parseDataPoint(buf)
+		dp, err := ParseDataPoint(buf)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			c.numDropBadPickle.Inc(1)
 			return 0, nil
 		}
-		buf = pickle(dp)
+		buf = Pickle(dp)
 	}
 	written := 0
 	size := len(buf)

@@ -11,10 +11,15 @@ build-win:
 	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" -o carbon-relay-ng.exe ./cmd/carbon-relay-ng
 
+build-linux:
+	cd ui/web && go-bindata -pkg web admin_http_assets
+	find . -name '*.go' | grep -v '^\.\/vendor' | xargs gofmt -w -s
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=$(VERSION)" ./cmd/carbon-relay-ng
+
 test:
 	go test ./...
 
-docker: build
+docker: build-linux
 	docker build --tag=raintank/carbon-relay-ng:latest .
 	docker tag raintank/carbon-relay-ng raintank/carbon-relay-ng:$(VERSION)
 
@@ -40,7 +45,7 @@ deb: build
 		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
-		--url https://github.com/scrichar/carbon-relay-ng \
+		--url https://github.com/graphite-ng/carbon-relay-ng \
 		--after-install examples/after_install.sh \
 		-C debian .
 	rm -rf debian
@@ -64,7 +69,7 @@ deb-upstart: build
 		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
-		--url https://github.com/scrichar/carbon-relay-ng \
+		--url https://github.com/graphite-ng/carbon-relay-ng \
 		-C debian .
 	rm -rf debian
 
@@ -89,7 +94,7 @@ rpm: build
 		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
-		--url https://github.com/scrichar/carbon-relay-ng \
+		--url https://github.com/graphite-ng/carbon-relay-ng \
 		--after-install examples/after_install.sh \
 		-C redhat .
 	rm -rf redhat
@@ -114,7 +119,7 @@ rpm-centos6: build
 		-m "Dieter Plaetinck <dieter@raintank.io>" \
 		--description "Fast carbon relay+aggregator with admin interfaces for making changes online" \
 		--license BSD \
-		--url https://github.com/scrichar/carbon-relay-ng \
+		--url https://github.com/graphite-ng/carbon-relay-ng \
 		-C redhat .
 	rm -rf redhat
 

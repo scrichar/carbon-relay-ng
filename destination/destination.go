@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/Dieterbe/go-metrics"
-	"github.com/scrichar/carbon-relay-ng/matcher"
-	"github.com/scrichar/carbon-relay-ng/stats"
-	"github.com/scrichar/carbon-relay-ng/util"
+	"github.com/graphite-ng/carbon-relay-ng/matcher"
+	"github.com/graphite-ng/carbon-relay-ng/stats"
+	"github.com/graphite-ng/carbon-relay-ng/util"
 )
 
 func addrInstanceSplit(addr string) (string, string) {
@@ -49,7 +49,11 @@ type Destination struct {
 	SpoolSyncPeriod      time.Duration
 	SpoolSleep           time.Duration // how long to wait between stores to spool
 	UnspoolSleep         time.Duration // how long to wait between loads from spool
+<<<<<<< HEAD
 	RouteName            string        // how long to wait between loads from spool
+=======
+	RouteName            string
+>>>>>>> 7a664ab7893c48c479170049b33f8a2cec6062f1
 
 	// set in/via Run()
 	In                  chan []byte        `json:"-"` // incoming metrics
@@ -68,13 +72,13 @@ type Destination struct {
 }
 
 // New creates a destination object. Note that it still needs to be told to run via Run().
-func New(prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration, routeName string) (*Destination, error) {
+func New(routeName, prefix, sub, regex, addr, spoolDir string, spool, pickle bool, periodFlush, periodReConn time.Duration, connBufSize, ioBufSize, spoolBufSize int, spoolMaxBytesPerFile, spoolSyncEvery int64, spoolSyncPeriod, spoolSleep, unspoolSleep time.Duration) (*Destination, error) {
 	m, err := matcher.New(prefix, sub, regex)
 	if err != nil {
 		return nil, err
 	}
 	addr, instance := addrInstanceSplit(addr)
-	key := util.SpoolKeyAddrToPath(addr, routeName)
+	key := util.Key(routeName, addr)
 	dest := &Destination{
 		Matcher:              *m,
 		Addr:                 addr,
@@ -232,7 +236,7 @@ func (dest *Destination) updateConn(addr string) {
 		log.Notice("dest %v update address to %v)\n", dest.Key, addr)
 		dest.Addr = addr
 		dest.Instance = instance
-		dest.Key = util.SpoolKeyAddrToPath(addr, dest.RouteName)
+		dest.Key = util.Key(dest.RouteName, addr)
 		dest.setMetrics()
 	}
 	dest.connUpdates <- conn

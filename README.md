@@ -1,6 +1,6 @@
 [![Circle CI](https://circleci.com/gh/graphite-ng/carbon-relay-ng.svg?style=shield)](https://circleci.com/gh/graphite-ng/carbon-relay-ng)
-[![Go Report Card](https://goreportcard.com/badge/github.com/scrichar/carbon-relay-ng)](https://goreportcard.com/report/github.com/scrichar/carbon-relay-ng)
-[![GoDoc](https://godoc.org/github.com/scrichar/carbon-relay-ng?status.svg)](https://godoc.org/github.com/scrichar/carbon-relay-ng)
+[![Go Report Card](https://goreportcard.com/badge/github.com/graphite-ng/carbon-relay-ng)](https://goreportcard.com/report/github.com/graphite-ng/carbon-relay-ng)
+[![GoDoc](https://godoc.org/github.com/graphite-ng/carbon-relay-ng?status.svg)](https://godoc.org/github.com/graphite-ng/carbon-relay-ng)
 
 carbon-relay-ng
 ===============
@@ -11,7 +11,7 @@ Like carbon-relay from the graphite project, except it:
  * performs better: should be able to do about 100k ~ 1M million metrics per second depending on configuration and CPU speed.
  * you can adjust the routing table at runtime, in real time using the web or telnet interface (though they may have some rough edges)
  * has aggregator functionality built-in for cross-series, cross-time and cross-time-and-series aggregations.
- * supports plaintext and pickle graphite routes (output) and metrics2.0/grafana.net, as well as kafka.
+ * supports plaintext and pickle graphite routes (output) and metrics2.0/grafana.net, as well as kafka and Google PubSub.
  * graphite routes supports a per-route spooling policy.
    (i.e. in case of an endpoint outage, we can temporarily queue the data up to disk and resume later)
  * performs validation on all incoming metrics (see below)
@@ -30,14 +30,14 @@ Limitations
 
 * regex rewriter rules do not support limiting number of replacements, max must be set to -1
 * the web UI is not always reliable to make changes.  the config file and tcp interface are safer and more complete anyway.
-* internal metrics *must* be routed somewhere (e.g. into the relay itself) otherwise it'll [leak memory](https://github.com/scrichar/carbon-relay-ng/issues/50).
+* internal metrics *must* be routed somewhere (e.g. into the relay itself) otherwise it'll [leak memory](https://github.com/graphite-ng/carbon-relay-ng/issues/50).
   this is a silly bug but I haven't had time yet to fix it.
 
 
 Releases & versions
 -------------------
 
-see [https://github.com/scrichar/carbon-relay-ng/releases](https://github.com/scrichar/carbon-relay-ng/releases)
+see [https://github.com/graphite-ng/carbon-relay-ng/releases](https://github.com/graphite-ng/carbon-relay-ng/releases)
 
 
 Instrumentation
@@ -45,7 +45,7 @@ Instrumentation
 
 * Extensive performance variables are available in json at http://localhost:8081/debug/vars2 (update port if you change it in config)
 * You can also send metrics to graphite (or feed back into the relay), see config.
-* Comes with a [grafana dashboard](https://github.com/scrichar/carbon-relay-ng/blob/master/grafana-dashboard.json) which you can also [download from the grafana dashboards site](https://grafana.com/dashboards/338)
+* Comes with a [grafana dashboard](https://github.com/graphite-ng/carbon-relay-ng/blob/master/grafana-dashboard.json) which you can also [download from the grafana dashboards site](https://grafana.com/dashboards/338)
 
 ![grafana dashboard](https://raw.githubusercontent.com/graphite-ng/carbon-relay-ng/master/screenshots/grafana-screenshot.png)
 
@@ -70,9 +70,9 @@ We use https://github.com/kardianos/govendor to manage vendoring 3rd party libra
 
     export GOPATH=/some/path/
     export PATH="$PATH:$GOPATH/bin"
-    go get -d github.com/scrichar/carbon-relay-ng
+    go get -d github.com/graphite-ng/carbon-relay-ng
     go get github.com/jteeuwen/go-bindata/...
-    cd "$GOPATH/src/github.com/scrichar/carbon-relay-ng"
+    cd "$GOPATH/src/github.com/graphite-ng/carbon-relay-ng"
     # optional: check out an older version: git checkout v0.5
     make
 
@@ -93,7 +93,7 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
   * any routes that matches
 * The route can have different behaviors, based on its type:
 
-  * for grafanaNet / kafkaMdm routes, there is only a single endpoint so that's where the data goes.  For standard/carbon routes you can control how data gets routed into destinations:
+  * for grafanaNet / kafkaMdm / Google PubSub routes, there is only a single endpoint so that's where the data goes.  For standard/carbon routes you can control how data gets routed into destinations:
   * sendAllMatch: send all metrics to all the defined endpoints (possibly, and commonly only 1 endpoint).
   * sendFirstMatch: send the metrics to the first endpoint that matches it.
   * consistentHashing: the algorithm is the same as Carbon's consistent hashing.
@@ -103,11 +103,11 @@ The conditions are AND-ed.  Regexes are more resource intensive and hence should
 carbon-relay-ng (for now) focuses on staying up and not consuming much resources.
 
 For carbon routes:
-if connection is up but slow, we drop the data 
+if connection is up but slow, we drop the data
 if connection is down and spooling enabled.  we try to spool but if it's slow we drop the data
 if connection is down and spooling disabled -> drop the data
 
-kafka and grafanaNet have an in-memory buffer and can be configured to blocking or non-blocking mode when the buffer runs full.
+kafka, Google PubSub, and grafanaNet have an in-memory buffer and can be configured to blocking or non-blocking mode when the buffer runs full.
 
 
 Input
@@ -200,7 +200,7 @@ Take a look at the included carbon-relay-ng.ini, which includes comments describ
 
 The major config sections are the `blacklist` array, and the `[[aggregation]]`, `[[rewriter]]` and `[[route]]` entries.
 
-[Overview of all routes/destinations config options and tuning options](https://github.com/scrichar/carbon-relay-ng/blob/master/docs/routes.md)
+[Overview of all routes/destinations config options and tuning options](https://github.com/graphite-ng/carbon-relay-ng/blob/master/docs/routes.md)
 
 You can also create routes, populate the blacklist, etc via the `init` config array using the same commands as the telnet interface, detailed below.
 
@@ -283,3 +283,30 @@ commands:
                    regex=<regex>                 new matcher regex
 
     delRoute <routeKey>                          delete given route
+
+InfluxDb Templates
+------------------
+
+If carbon-relay-ng metrics are forwarded to influxdb the following influxdb templates are useful:
+
+"service_is_carbon-relay-ng.*.mtype_is_gauge.*.unit_is_B.what_is_FlushSize.* service.instance.measurement_type.destination.unit.measurement.type.measurement*",
+"service_is_carbon-relay-ng.*.mtype_is_gauge.*.unit_is_Byte service.instance.measurement_type.measurement.unit",
+"service_is_carbon-relay-ng.*.mtype_is_gauge.*.unit_is_Metric.what_is_bufferSize service.instance.measurement_type.destination.unit.measurement",
+"service_is_carbon-relay-ng.*.mtype_is_gauge.*.unit_is_Metric.what_is_numBuffered service.instance.measurement_type.destination.unit.measurement",
+"service_is_carbon-relay-ng.*.mtype_is_gauge.unit_is_ns.*.what_is_durationFlush.* service.instance.measurement_type.unit.destination.measurement.type.measurement*",
+"service_is_carbon-relay-ng.*.mtype_is_gauge.unit_is_ns.*.what_is_durationWrite.* service.instance.measurement_type.unit.destination.measurement*",
+"service_is_carbon-relay-ng.*.mtype_is_gauge.*.unit_is_Metric.status_is_buffered service.instance.measurement_type.spool.unit.measurement",
+"service_is_carbon-relay-ng.*.mtype_is_gauge.unit_is_ns.*.operation_is_write.* service.instance.measurement_type.unit.spool.measurement*",
+"service_is_carbon-relay-ng.*.mtype_is_gauge.unit_is_ns.*.operation_is_buffer.* service.instance.measurement_type.unit.spool.measurement*",
+"service_is_carbon-relay-ng.*.mtype_is_counter.*.unit_is_Metric.action_is_drop.* service.instance.measurement_type.destination.unit.measurement.reason",
+"service_is_carbon-relay-ng.*.mtype_is_counter.*.unit_is_Err.* service.instance.measurement_type.destination.unit.measurement*",
+"service_is_carbon-relay-ng.*.mtype_is_counter.*.unit_is_Metric.* service.instance.measurement_type.spool.unit.measurement*",
+"service_is_carbon-relay-ng.*.mtype_is_counter.*.unit_is_Metric.direction_is_out service.instance.measurement_type.destination.unit.measurement",
+"service_is_carbon-relay-ng.*.mtype_is_counter.unit_is_Metric.direction_is_blacklist service.instance.measurement_type.unit.measurement",
+"service_is_carbon-relay-ng.*.mtype_is_counter.unit_is_Metric.direction_is_in service.instance.measurement_type.unit.measurement",
+"service_is_carbon-relay-ng.*.mtype_is_counter.unit_is_Metric.direction_is_unroutable service.instance.measurement_type.unit.measurement",
+"service_is_carbon-relay-ng.*.mtype_is_counter.unit_is_Err.type_is_out_of_order service.instance.measurement_type.unit.measurement",
+"service_is_carbon-relay-ng.*.mtype_is_counter.unit_is_Err.type_is_invalid service.instance.measurement_type.unit.measurement",
+"service_is_carbon-relay-ng.*.mtype_is_count.unit_is_Metric.*.*.orig_unit_is_ns service.instance.measurement_type.unit.spool.measurement.original_unit",
+"service_is_carbon-relay-ng.*.mtype_is_count.unit_is_Metric.*.*.*.orig_unit_is_ns service.instance.measurement_type.unit.destination.measurement.type.original_unit",
+"service_is_carbon-relay-ng.*.mtype_is_count.*.unit_is_Metric.what_is_FlushSize.* service.instance.measurement_type.unit.measurement*"
